@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XandMails • Código de Acesso em Tempo Real</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Background Animated Glow Orbs -->
+    <div class="ambient-glow orb-1"></div>
+    <div class="ambient-glow orb-2"></div>
+    <div class="ambient-glow orb-3"></div>
+
+    <div class="app-container">
+        <!-- Top Navigation / Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-bolt-lightning"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Xand<span>Mails</span></h1>
+                    <span class="brand-subtitle">Monitor de Código em Tempo Real</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Sound Toggle -->
+                <button id="btnSoundToggle" class="btn-icon" title="Ativar/Desativar som de alerta" aria-label="Som">
+                    <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="main-content">
+            <!-- Hero Card: Active Code Showcase -->
+            <section class="hero-card">
+                <!-- Header of the Card -->
+                <div class="hero-header">
+                    <div class="hero-title-group">
+                        <span class="section-tag">
+                            <i class="fa-solid fa-shield-halved"></i> Código de Acesso Único
+                        </span>
+                        <h2 id="heroStatusTitle">Aguardando Código</h2>
+                    </div>
+                </div>
+
+                <!-- STATE 1: ACTIVE CODE (Válido e dentro dos 15 minutos) -->
+                <div id="activeCodeContainer" class="code-showcase-container hidden">
+                    <div class="timer-banner">
+                        <div class="timer-progress-bar">
+                            <div id="timerBarFill" class="timer-progress-fill" style="width: 100%;"></div>
+                        </div>
+                        <div class="timer-info-row">
+                            <div class="timer-label">
+                                <i class="fa-regular fa-clock"></i>
+                                <span>Expira em:</span>
+                                <strong id="countdownDisplay" class="countdown-digits">15:00</strong>
+                            </div>
+                            <div class="expiration-timestamp" id="expirationTimeText">
+                                Válido por 15 minutos
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Digit Boxes -->
+                    <div class="code-digits-wrapper">
+                        <div class="digit-box" id="digit-0">-</div>
+                        <div class="digit-box" id="digit-1">-</div>
+                        <div class="digit-box" id="digit-2">-</div>
+                        <div class="digit-divider">•</div>
+                        <div class="digit-box" id="digit-3">-</div>
+                        <div class="digit-box" id="digit-4">-</div>
+                        <div class="digit-box" id="digit-5">-</div>
+                    </div>
+
+                    <!-- Action: Copy Code -->
+                    <div class="code-actions-wrapper">
+                        <button id="btnCopyCode" class="btn-copy-huge">
+                            <i class="fa-regular fa-copy" id="copyIcon"></i>
+                            <span id="copyText">Copiar Código</span>
+                        </button>
+                    </div>
+
+                    <!-- Email Metadata Details -->
+                    <div class="email-metadata-bar">
+                        <div class="meta-item">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <span class="meta-label">Recebido às:</span>
+                            <span id="metaReceivedAt" class="meta-value">--:--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STATE 2: EXPIRED CODE -->
+                <div id="expiredCodeContainer" class="code-showcase-container expired hidden">
+                    <div class="expired-badge-box">
+                        <i class="fa-solid fa-hourglass-end"></i>
+                        <span>ÚLTIMO CÓDIGO EXPIRADO</span>
+                    </div>
+
+                    <div class="code-digits-wrapper dimmed">
+                        <div class="digit-box" id="expired-digit-0">-</div>
+                        <div class="digit-box" id="expired-digit-1">-</div>
+                        <div class="digit-box" id="expired-digit-2">-</div>
+                        <div class="digit-divider">•</div>
+                        <div class="digit-box" id="expired-digit-3">-</div>
+                        <div class="digit-box" id="expired-digit-4">-</div>
+                        <div class="digit-box" id="expired-digit-5">-</div>
+                    </div>
+
+                    <!-- Action: Copy Expired Code -->
+                    <div class="code-actions-wrapper">
+                        <button id="btnCopyExpiredCode" class="btn-copy-huge btn-copy-secondary">
+                            <i class="fa-regular fa-copy" id="copyExpiredIcon"></i>
+                            <span id="copyExpiredText">Copiar Código Anterior</span>
+                        </button>
+                    </div>
+
+                    <div class="expired-info-text">
+                        <p>O tempo de tolerância de <strong>15 minutos</strong> expirou (Recebido às <span id="expiredReceivedAt">--:--</span>).</p>
+                        <span class="subtext">Solicite um novo código de acesso e ele será atualizado aqui em tempo real com novo contador.</span>
+                    </div>
+                </div>
+
+                <!-- STATE 3: WAITING / RADAR SCANNING -->
+                <div id="waitingContainer" class="radar-state-container">
+                    <div class="radar-scanner">
+                        <div class="radar-circle c1"></div>
+                        <div class="radar-circle c2"></div>
+                        <div class="radar-circle c3"></div>
+                        <div class="radar-beam"></div>
+                        <div class="radar-center-icon">
+                            <i class="fa-solid fa-inbox"></i>
+                        </div>
+                    </div>
+                    <div class="radar-text-group">
+                        <h3>Aguardando novo e-mail</h3>
+                        <p>Assim que o código de acesso for enviado para o seu e-mail, ele aparecerá aqui automaticamente por 15 minutos.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>XandMails • Monitor de códigos em tempo real • Exposição de 15 minutos</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
