@@ -410,6 +410,7 @@ class DisneyEmailMonitor:
 
     def get_status(self) -> dict:
         """Retorna o estado completo para o frontend."""
+        self.ensure_running()
         with self.lock:
             self._refresh_active_code_status()
             
@@ -453,14 +454,17 @@ class DisneyEmailMonitor:
                     break
                 time.sleep(1)
 
+    def ensure_running(self):
+        """Garante que a thread de monitoramento está ativa no processo worker atual (pós-fork do Gunicorn)."""
+        if not self.running or self.thread is None or not self.thread.is_alive():
+            self.running = True
+            self.thread = threading.Thread(target=self._loop, daemon=True)
+            self.thread.start()
+            logger.info(f"Thread de monitoramento iniciada no processo PID={os.getpid()}.")
+
     def start(self):
         """Inicia a thread de monitoramento."""
-        if self.running:
-            return
-        self.running = True
-        self.thread = threading.Thread(target=self._loop, daemon=True)
-        self.thread.start()
-        logger.info("Thread de monitoramento iniciada com sucesso.")
+        self.ensure_running()
 
     def stop(self):
         """Para a thread de monitoramento."""
