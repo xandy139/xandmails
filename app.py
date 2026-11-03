@@ -55,80 +55,21 @@ def get_status():
 
 @app.route("/api/check-now", methods=["POST"])
 def check_now():
-    """Força uma verificação imediata dos e-mails."""
-    result = monitor.check_emails()
-    status = monitor.get_status()
-    return jsonify({
-        "result": result,
-        "status": status
-    })
+    """Solicita verificação respeitando intervalo mínimo de segurança (cooldown de 8s)."""
+    should_check = True
+    if monitor.last_checked_at:
+        try:
+            last_dt = datetime.fromisoformat(monitor.last_checked_at)
+            if (datetime.now(timezone.utc) - last_dt).total_seconds() < 8:
+                should_check = False
+        except Exception:
+            pass
 
-
-@app.route("/api/reload-env", methods=["POST"])
-def reload_env():
-    """Recarrega as credenciais do arquivo .env sem reiniciar o servidor."""
-    load_dotenv(override=True)
-    new_user = os.getenv("EMAIL_USER", "")
-    new_pass = os.getenv("EMAIL_PASS", "")
-    monitor.update_credentials(new_user, new_pass)
-    result = monitor.check_emails()
-    return jsonify({
-        "success": True,
-        "message": "Configurações recarregadas com sucesso do .env!",
-        "configured": monitor.is_configured(),
-        "check_result": result
-    })
-
-
-@app.route("/api/clear-history", methods=["POST"])
-def clear_history():
-    """Limpa o código ativo e o histórico."""
-    with monitor.lock:
-        monitor.active_code = None
-        monitor.code_history = []
-        monitor._save_storage()
-    return jsonify({
-        "success": True,
-        "message": "Histórico e códigos limpos com sucesso!"
-    })
-
-
-@app.route("/api/simulate-code", methods=["POST"])
-def simulate_code():
-    """
-    Endpoint para testar e demonstrar o funcionamento do sistema
-    sem precisar esperar um código real da Disney.
-    """
-    now_utc = datetime.now(timezone.utc)
-    expires_at = now_utc + timedelta(minutes=monitor.expiration_minutes)
-    
-    # Gera um código de demonstração
-    import random
-    sample_code = f"{random.randint(100000, 999999)}"
-    
-    simulated_info = {
-        "code": sample_code,
-        "sender": "disneyplus@mail.disneyplus.com",
-        "subject": "Seu código de acesso único da Disney+ (Simulação)",
-        "received_at": now_utc.isoformat(),
-        "received_at_formatted": now_utc.strftime("%d/%m/%Y %H:%M:%S UTC"),
-        "expires_at": expires_at.isoformat(),
-        "time_left_seconds": monitor.expiration_minutes * 60,
-        "is_expired": False,
-        "detected_at": now_utc.isoformat(),
-        "is_simulated": True
-    }
-
-    with monitor.lock:
-        monitor.active_code = simulated_info
-        monitor.code_history.insert(0, simulated_info)
-        monitor.code_history = monitor.code_history[:20]
-        monitor._save_storage()
+    if should_check:
+        monitor.check_emails()
 
     return jsonify({
-        "success": True,
-        "message": f"Código simulado {sample_code} criado com sucesso!",
-        "code": simulated_info
+        "status": monitor.get_status()
     })
 
 

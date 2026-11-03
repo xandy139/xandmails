@@ -20,6 +20,30 @@ logging.basicConfig(
 logger = logging.getLogger("DisneyEmailMonitor")
 
 
+ALLOWED_DISNEY_DOMAINS = (
+    "disneyplus.com",
+    "disney.com",
+    "thewaltdisneycompany.com",
+    "go.com",
+)
+
+
+def is_official_disney_sender(from_hdr: str) -> bool:
+    """
+    Valida estritamente se o endereço de e-mail do remetente pertence a um
+    domínio oficial da Disney/Disney+, impedindo captura de códigos de outros
+    serviços (bancos, Google, redes sociais, etc.).
+    """
+    if not from_hdr:
+        return False
+    _, addr = email.utils.parseaddr(from_hdr)
+    addr = addr.strip().lower()
+    if "@" not in addr:
+        return False
+    domain = addr.split("@", 1)[1]
+    return any(domain == d or domain.endswith("." + d) for d in ALLOWED_DISNEY_DOMAINS)
+
+
 def decode_mime_header(header_value: str) -> str:
     """Decodifica cabeçalhos de e-mail com múltiplos charsets (RFC 2047)."""
     if not header_value:
@@ -259,8 +283,8 @@ class DisneyEmailMonitor:
                     except ValueError:
                         pass
 
-            # 2. Também faz buscas direcionadas por termos específicos
-            for term in ['(FROM "disney")', '(FROM "disneyplus")', '(SUBJECT "código")', '(SUBJECT "passcode")']:
+            # 2. Também faz buscas direcionadas apenas por remetentes da Disney
+            for term in ['(FROM "disney")', '(FROM "disneyplus")']:
                 try:
                     s, m = mail.search(None, term)
                     if s == "OK" and m[0]:
@@ -294,17 +318,8 @@ class DisneyEmailMonitor:
                     subject_hdr = decode_mime_header(hdr_msg.get("Subject", ""))
                     date_hdr = hdr_msg.get("Date", "")
 
-                    # Verifica se o e-mail é da Disney ou de código de acesso
-                    is_disney = (
-                        "disney" in from_hdr.lower()
-                        or "disney" in subject_hdr.lower()
-                        or "disneyplus" in from_hdr.lower()
-                        or "disneyplus" in subject_hdr.lower()
-                        or "código de acesso" in subject_hdr.lower()
-                        or "passcode" in subject_hdr.lower()
-                    )
-
-                    if not is_disney:
+                    # SEGURANÇA: Exige que o remetente seja estritamente de um domínio oficial da Disney
+                    if not is_official_disney_sender(from_hdr):
                         continue
 
                     # Converte a data do e-mail
@@ -409,29 +424,28 @@ class DisneyEmailMonitor:
                     pass
 
     def get_status(self) -> dict:
-        """Retorna o estado completo para o frontend."""
+        """Retorna apenas os dados seguros necessários para o frontend público."""
         self.ensure_running()
         with self.lock:
             self._refresh_active_code_status()
-            
-            # Mascara o e-mail para exibição segura na tela
-            masked_email = ""
-            if self.email_user and "@" in self.email_user:
-                parts = self.email_user.split("@")
-                name = parts[0]
-                masked_name = name[:2] + "***" + (name[-1] if len(name) > 2 else "")
-                masked_email = f"{masked_name}@{parts[1]}"
+
+            safe_active_code = None
+            if self.active_code:
+                safe_active_code = {
+                    "code": self.active_code.get("code"),
+                    "received_at": self.active_code.get("received_at"),
+                    "expires_at": self.active_code.get("expires_at"),
+                    "time_left_seconds": self.active_code.get("time_left_seconds"),
+                    "is_expired": self.active_code.get("is_expired"),
+                }
 
             return {
                 "configured": self.is_configured(),
-                "email_user_masked": masked_email,
                 "connected": self.is_connected,
                 "last_checked_at": self.last_checked_at,
-                "last_error": self.last_error,
                 "poll_interval": self.poll_interval,
                 "expiration_minutes": self.expiration_minutes,
-                "active_code": self.active_code,
-                "history": self.code_history
+                "active_code": safe_active_code
             }
 
     def _loop(self):
