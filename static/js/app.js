@@ -15,6 +15,9 @@ const state = {
 // Elementos DOM
 const dom = {
     // Header
+    btnCheckNow: document.getElementById("btnCheckNow"),
+    checkNowIcon: document.getElementById("checkNowIcon"),
+    checkNowText: document.getElementById("checkNowText"),
     btnSoundToggle: document.getElementById("btnSoundToggle"),
     soundIcon: document.getElementById("soundIcon"),
 
@@ -333,8 +336,34 @@ function updateSoundButton() {
     }
 }
 
+// Força uma verificação manual imediata
+async function checkEmailsNow() {
+    if (!dom.btnCheckNow || dom.btnCheckNow.disabled) return;
+    dom.btnCheckNow.disabled = true;
+    if (dom.checkNowIcon) dom.checkNowIcon.classList.add("fa-spin");
+    if (dom.checkNowText) dom.checkNowText.textContent = "Verificando...";
+
+    try {
+        const response = await fetch("/api/check-now", { method: "POST" });
+        if (!response.ok) throw new Error("Falha ao verificar");
+        const data = await response.json();
+        if (data.status) {
+            handleStatusData(data.status);
+        }
+        showToast("Caixa de entrada verificada!", "info");
+    } catch (err) {
+        console.error("Erro ao verificar agora:", err);
+        showToast("Erro ao verificar caixa de entrada.", "error");
+    } finally {
+        if (dom.checkNowIcon) dom.checkNowIcon.classList.remove("fa-spin");
+        if (dom.checkNowText) dom.checkNowText.textContent = "Verificar Agora";
+        dom.btnCheckNow.disabled = false;
+    }
+}
+
 // Event Listeners
 function setupEvents() {
+    if (dom.btnCheckNow) dom.btnCheckNow.addEventListener("click", checkEmailsNow);
     if (dom.btnCopyCode) dom.btnCopyCode.addEventListener("click", () => copyCodeToClipboard(false));
     if (dom.btnCopyExpiredCode) dom.btnCopyExpiredCode.addEventListener("click", () => copyCodeToClipboard(true));
     if (dom.btnSoundToggle) dom.btnSoundToggle.addEventListener("click", toggleSound);
